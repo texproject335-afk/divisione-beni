@@ -64,6 +64,15 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const utenteDalLink = urlParams.get('u');
+
+        if (utenteDalLink) {
+            localStorage.setItem('utenteAttuale', utenteDalLink);
+            // Pulisce il link in alto per farlo sembrare normale
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
         let utente = localStorage.getItem('utenteAttuale');
         let turnoAttualeGlobale = "";
         let oggettiGlobali = {}; 
