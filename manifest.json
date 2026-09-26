@@ -1,0 +1,16 @@
+{
+  "name": "Divisione Beni Familiari",
+  "short_name": "DivBeni",
+  "description": "App per la divisione dei beni in famiglia",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f4f9",
+  "theme_color": "#2c3e50",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3592/3592864.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
