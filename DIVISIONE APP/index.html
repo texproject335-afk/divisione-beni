@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Divisione Beni</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding-top: 20px; margin: 0; text-align: center; }
+        .login-box, .app-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
+        .app-box { display: none; }
+        button { display: block; width: 100%; margin: 10px 0; padding: 15px; font-size: 18px; background-color: #2c3e50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #1a252f; }
+        .item-card { background: #fff; border: 1px solid #ddd; padding: 15px; margin: 15px 0; border-radius: 8px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .item-card h3 { margin-top: 0; }
+        .gold { border-left: 8px solid gold; }
+        .silver { border-left: 8px solid silver; }
+        .bronze { border-left: 8px solid #cd7f32; }
+        .btn-scegli { background-color: #27ae60; margin-top: 15px; }
+        .btn-scegli:hover { background-color: #2ecc71; }
+        .preso { color: #c0392b; font-weight: bold; background: #fadbd8; padding: 10px; border-radius: 5px; text-align: center; }
+        .btn-random { background-color: #f39c12; margin-bottom: 20px; }
+        .btn-random:hover { background-color: #e67e22; }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+    <!-- I BOTTONI CON I NOMI VERI -->
+    <div class="login-box" id="login-section">
+        <h2>Chi sei?</h2>
+        <button onclick="login('Lorenzo')">Lorenzo</button>
+        <button onclick="login('Massimo')">Massimo</button>
+        <button onclick="login('Paolo')">Paolo</button>
+        <button onclick="login('Enrico')">Enrico</button>
+    </div>
+
+    <div class="app-box" id="app-section">
+        <h2 id="saluto"></h2>
+        
+        <button class="btn-random" onclick="mischiaTurni()">🎲 Estrai Ordine Casuale 🎲</button>
+
+        <div style="background: #eee; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+            <p style="margin: 0 0 10px 0;">Ordine del round: <br><strong id="ordine-lista" style="color: #8e44ad;">Caricamento...</strong></p>
+            <p style="margin: 0; font-size: 1.2em;">Tocca a: <strong id="turno-attuale" style="color: #2980b9;">...</strong></p>
+        </div>
+        
+        <h3>Lista Beni da Dividere</h3>
+        <div id="lista-oggetti"></div>
+        
+        <button onclick="logout()" style="background-color: #e74c3c; margin-top: 30px;">Esci / Cambia Utente</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyACiYS0llLasujC2CF5AGYufpDPo4neAn8",
+            authDomain: "division-app-e5d65.firebaseapp.com",
+            projectId: "division-app-e5d65",
+            storageBucket: "division-app-e5d65.firebasestorage.app",
+            messagingSenderId: "68814409114",
+            appId: "1:68814409114:web:d0af54109c6a617ca1be23"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let utente = localStorage.getItem('utenteAttuale');
+        let turnoAttualeGlobale = "";
+        let oggettiGlobali = {}; 
+        let ordineInizialeGlobale = [];
+
+        function mostraSchermataCorretta() {
+            if (utente) {
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('app-section').style.display = 'block';
+                document.getElementById('saluto').innerText = "Ciao, " + utente + "!";
+                ascoltaDati();
+            } else {
+                document.getElementById('login-section').style.display = 'block';
+                document.getElementById('app-section').style.display = 'none';
+            }
+        }
+
+        function login(nome) { utente = nome; localStorage.setItem('utenteAttuale', nome); mostraSchermataCorretta(); }
+        function logout() { utente = null; localStorage.removeItem('utenteAttuale'); mostraSchermataCorretta(); }
+
+        function ascoltaDati() {
+            database.ref('/').on('value', (snapshot) => {
+                const dati = snapshot.val();
+                if (!dati) return;
+
+                oggettiGlobali = dati.oggetti || {};
+                
+                // Nomi di default finché non viene estratto l'ordine a sorte
+                ordineInizialeGlobale = dati.ordineIniziale || ['Lorenzo', 'Massimo', 'Paolo', 'Enrico'];
+                const numGiocatori = ordineInizialeGlobale.length;
+
+                document.getElementById('ordine-lista').innerText = ordineInizialeGlobale.join(" ➔ ");
+
+                let scelteEffettuate = 0;
+                for (let id in oggettiGlobali) {
+                    if (oggettiGlobali[id].sceltoDa && oggettiGlobali[id].sceltoDa !== "") { scelteEffettuate++; }
+                }
+
+                let round = Math.floor(scelteEffettuate / numGiocatori);
+                let pickNelRound = scelteEffettuate % numGiocatori;
+                let indiceAttuale = (pickNelRound + round) % numGiocatori;
+                turnoAttualeGlobale = ordineInizialeGlobale[indiceAttuale];
+
+                document.getElementById('turno-attuale').innerText = turnoAttualeGlobale;
+                mostraOggetti(oggettiGlobali);
+            });
+        }
+
+        function mischiaTurni() {
+            let scelteEffettuate = 0;
+            for (let id in oggettiGlobali) {
+                if (oggettiGlobali[id].sceltoDa && oggettiGlobali[id].sceltoDa !== "") { scelteEffettuate++; }
+            }
+
+            if (scelteEffettuate > 0) {
+                alert("Attenzione! La divisione è già iniziata, non potete più mischiare i turni.");
+                return;
+            }
+
+            if (!confirm("Sei sicuro di voler estrarre a sorte l'ordine? Questo cambierà l'ordine per tutti!")) return;
+
+            // I NOMI VERI DA METTERE NEL CAPPELLO PER L'ESTRAZIONE
+            let giocatori = ['Lorenzo', 'Massimo', 'Paolo', 'Enrico']; 
+
+            // Algoritmo che mischia i nomi in modo casuale
+            for (let i = giocatori.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [giocatori[i], giocatori[j]] = [giocatori[j], giocatori[i]];
+            }
+
+            // Invia i nomi mischiati a Firebase
+            database.ref('ordineIniziale').set(giocatori).then(() => {
+                alert("I turni sono stati mischiati!");
+            });
+        }
+
+        function mostraOggetti(oggetti) {
+            const contenitore = document.getElementById('lista-oggetti');
+            contenitore.innerHTML = ''; 
+
+            for (let idOggetto in oggetti) {
+                let obj = oggetti[idOggetto];
+                let classeCat = 'bronze';
+                if(obj.categoria === 'Gold') classeCat = 'gold';
+                if(obj.categoria === 'Silver') classeCat = 'silver';
+
+                let html = `
+                    <div class="item-card ${classeCat}">
+                        <h3>${obj.nome}</h3>
+                        <p>Categoria: <strong>${obj.categoria}</strong></p>
+                `;
+
+                if (obj.foto) {
+                    html += `<img src="${obj.foto}" style="width: 100%; border-radius: 5px; margin-bottom: 10px;">`;
+                }
+
+                if (obj.sceltoDa) {
+                    html += `<div class="preso">Assegnato a: ${obj.sceltoDa}</div>`;
+                } else {
+                    html += `<button class="btn-scegli" onclick="scegliOggetto('${idOggetto}', '${obj.categoria}')">Lo prendo io!</button>`;
+                }
+
+                html += `</div>`;
+                contenitore.innerHTML += html;
+            }
+        }
+
+        function scegliOggetto(idOggetto, categoriaOggettoCliccato) {
+            if (utente !== turnoAttualeGlobale) {
+                alert("Alt! Non è il tuo turno. Tocca a: " + turnoAttualeGlobale);
+                return;
+            }
+
+            let mieiGold = 0; let mieiSilver = 0;
+            for (let id in oggettiGlobali) {
+                let obj = oggettiGlobali[id];
+                if (obj.sceltoDa === utente) {
+                    if (obj.categoria === 'Gold') mieiGold++;
+                    if (obj.categoria === 'Silver') mieiSilver++;
+                }
+            }
+
+            if (categoriaOggettoCliccato === 'Gold' && mieiGold >= 1) { alert("Hai già raggiunto il limite massimo di oggetti Gold (1)!"); return; }
+            if (categoriaOggettoCliccato === 'Silver' && mieiSilver >= 2) { alert("Hai già raggiunto il limite massimo di oggetti Silver (2)!"); return; }
+
+            database.ref('oggetti/' + idOggetto).update({ sceltoDa: utente });
+        }
+
+        mostraSchermataCorretta();
+    </script>
+</body>
+</html>
